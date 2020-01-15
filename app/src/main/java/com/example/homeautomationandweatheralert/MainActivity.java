@@ -1,11 +1,18 @@
 package com.example.homeautomationandweatheralert;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
 
+import android.app.AlertDialog;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.Switch;
@@ -26,11 +33,16 @@ import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.example.homeautomationandweatheralert.App.CHANNEL_1_ID;
+
 public class MainActivity extends AppCompatActivity {
     Handler mainHandler;
     Button lightButton,fanButton,doorButton;
     TextView temparatureTextView,skyTextView,humidityTextView,airQualityTextView;
+    Button graphIntentButton;
     MediaPlayer mediaPlayer;
+    NotificationManager notificationManager;
+    static boolean not=false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,6 +51,9 @@ public class MainActivity extends AppCompatActivity {
 
         mainHandler= new Handler();
 
+        /*Intent Buttons */
+        graphIntentButton = findViewById(R.id.graph_intent_button);
+        /* Audio initialization */
         mediaPlayer = MediaPlayer.create(this,R.raw.s1);
 
 
@@ -52,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
         lightButton = findViewById(R.id.light_button);
         fanButton = findViewById(R.id.fan_button);
         doorButton = findViewById( R.id.door_button);
-        lightButton.setOnClickListener(new View.OnClickListener() {
+        lightButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 mediaPlayer.start();
@@ -106,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        fanButton.setOnClickListener(new View.OnClickListener() {
+        fanButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 mediaPlayer.start();
@@ -160,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        doorButton.setOnClickListener(new View.OnClickListener() {
+        doorButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 mediaPlayer.start();
@@ -214,8 +229,17 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         mainHandler.postDelayed(runnable,1000);
+        graphIntentButton.setOnClickListener(graphIntentButtonListener);
 
     }
+    OnClickListener graphIntentButtonListener = new OnClickListener()
+    {
+
+        @Override
+        public void onClick(View v) {
+            startActivity(new Intent(getApplicationContext(),Graphs.class));
+        }
+    };
     Runnable runnable = new Runnable() {
         @Override
         public void run() {
@@ -235,27 +259,38 @@ public class MainActivity extends AppCompatActivity {
                         try{
                             JSONObject jsonObject = new JSONObject(response);
                             JSONArray jsonArray = jsonObject.getJSONArray("data");
-                            for(int i=0;i<jsonArray.length();i++)
-                            {
-                                JSONObject data= jsonArray.getJSONObject(i);
-                                temparatureTextView.setText(data.getString("temerature")+"°C");
-                                String rain=data.getString("raindrop");
-                                if(rain.equalsIgnoreCase("0"))
-                                {
-                                    skyTextView.setText("Rainy");
-                                }
-                                else if(rain.equalsIgnoreCase("1"))
-                                {
-                                    skyTextView.setText("Cloudy");
-                                }
-                                else if(rain.equalsIgnoreCase("2"))
-                                {
-                                    skyTextView.setText("Sunny");
-                                }
 
-                                humidityTextView.setText("Humidity: "+data.getString("humidity")+"%");
-                                airQualityTextView.setText("Co2: "+data.getString("co")+"PPM");
+                            JSONObject data= jsonArray.getJSONObject(jsonArray.length()-1);
+                            temparatureTextView.setText(data.getString("temerature")+"°C");
+                            if(not)
+                            {
+                               if(Float.parseFloat(data.getString("temperature"))>30)
+                               {
+                                   sendOnChannel1("Home","temperature is too high");
+                                   not=true;
+                               }
+
                             }
+                            else {
+
+                            }
+                            String rain=data.getString("raindrop");
+                            if((""+rain.charAt(0)).equalsIgnoreCase("0"))
+                            {
+                                skyTextView.setText("Rainy");
+                            }
+                            else if((""+rain.charAt(0)).equalsIgnoreCase("1"))
+                            {
+                                skyTextView.setText("Cloudy");
+                            }
+                            else if((""+rain.charAt(0)).equalsIgnoreCase("2"))
+                            {
+                                skyTextView.setText("Sunny");
+                            }
+
+                            humidityTextView.setText("Humidity: "+data.getString("humidity")+"%");
+                            airQualityTextView.setText("Co2: "+data.getString("co")+"PPM");
+
                         }catch (Exception e)
                         {
 
@@ -287,5 +322,42 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         requestQueue.add(stringRequest);
+    }
+    public void sendOnChannel1(String title,String message) {
+
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_1_ID)
+                .setSmallIcon(R.drawable.ic_launcher_background)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .build();
+
+        notificationManager.notify(1, notification);
+    }
+
+    @Override
+    public void onBackPressed() {
+        alertDialog();
+
+    }
+    public void alertDialog()
+    {
+        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+        alertDialogBuilder.setMessage("Are you sure you want to close this app?");
+        alertDialogBuilder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                MainActivity.super.onBackPressed();
+            }
+        });
+        alertDialogBuilder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
+        AlertDialog alertDialog = alertDialogBuilder.create();
+        alertDialog.show();
     }
 }

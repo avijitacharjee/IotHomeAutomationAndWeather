@@ -132,7 +132,14 @@
                 android:textColor="@color/text_light"
                 android:textSize="26sp"/>
 
-
         </LinearLayout>
+
     </LinearLayout>
+    <Button
+        android:id="@+id/graph_intent_button"
+        android:layout_width="wrap_content"
+        android:layout_gravity="right"
+        android:text="Show Last week graphs"
+        android:textAllCaps="false"
+        android:layout_height="wrap_content"/>
 </LinearLayout>
